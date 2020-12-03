@@ -7,7 +7,47 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.ram = [0] * 256 # 256 bytes of memory
+        self.reg = [0] * 8 # 8 registers
+        self.pc = 0 
+        self.commands = {
+            0b00000001: self.hlt, # HLT: halt the CPU and exit the emulator
+            0b10000010: self.ldi, # LDI: load "immediate", store a value in a register, or "set this register to this value"
+            0b01000111: self.prn # PRN: a pseudo-instruction that prints the numeric value stored in a register
+        }
+
+    # Inside the CPU, there are two internal registers used for memory operations: the Memory Address Register (MAR) and the Memory Data Register (MDR). 
+    # The MAR contains the address that is being read or written to. The MDR contains the data that was read or the data to write. 
+    # You don't need to add the MAR or MDR to your CPU class, but they would make handy parameter names for `ram_read()` and `ram_write()`
+    
+    # mar = Memory Address Register
+    def ram_read(self, mar):
+        return self.ram[mar]
+    
+    # mar = Memory Address Register
+    # mdr = Memory Data Register
+    def ram_write(self, mar, mdr):
+        self.ram[mar] = mdr
+    
+    # halt the CPU and exit the emulator
+    def hlt(self, op_a, op_b):
+        return (0, False)
+        
+    
+    # LDI register immediate
+    # Set the value of a register to an integer
+    def ldi(self, op_a, op_b):
+        self.reg[op_a] = op_b
+
+        return (3, True)
+    
+    # PRN register pseudo-instruction
+    # print the numeric value stored in a register
+    def prn(self, op_a, op_b):
+        print(self.reg[op_a])
+
+        return (2, True)
+
 
     def load(self):
         """Load a program into memory."""
@@ -27,8 +67,11 @@ class CPU:
         ]
 
         for instruction in program:
+            print(f'instruction: {instruction}')
             self.ram[address] = instruction
             address += 1
+        
+        print(self.ram)
 
 
     def alu(self, op, reg_a, reg_b):
@@ -62,4 +105,25 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        running = True
+
+        while running:
+            ir = self.reg[self.pc] # instruction register
+
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
+
+            try:
+                operation_op = self.commands[ir](operand_a, operand_b)
+                running = operation_op[1]
+                self.pc += operation_op[0]
+
+                if (running is False):
+                    sys.exit(1)
+
+            except:
+                print(f"Error: Instruction {ir} not found!")
+                sys.exit(1)
+
+
+    
