@@ -10,6 +10,7 @@ class CPU:
         self.ram = [0] * 256 # 256 bytes of memory
         self.reg = [0] * 8 # 8 registers
         self.pc = 0 
+        self.running = False
         self.commands = {
             0b00000001: self.hlt, # HLT: halt the CPU and exit the emulator
             0b10000010: self.ldi, # LDI: load "immediate", store a value in a register, or "set this register to this value"
@@ -31,22 +32,24 @@ class CPU:
     
     # halt the CPU and exit the emulator
     def hlt(self, op_a, op_b):
-        return (0, False)
+        self.running = False
+        sys.exit()
         
-    
+        
     # LDI register immediate
     # Set the value of a register to an integer
     def ldi(self, op_a, op_b):
         self.reg[op_a] = op_b
-
-        return (3, True)
+        self.pc += 3
+        self.running = True
+        
     
     # PRN register pseudo-instruction
     # print the numeric value stored in a register
     def prn(self, op_a, op_b):
         print(self.reg[op_a])
-
-        return (2, True)
+        self.pc += 2
+        self.running = True
 
 
     def load(self):
@@ -105,25 +108,16 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        running = True
+        self.running = True
 
-        while running:
-            ir = self.reg[self.pc] # instruction register
+        while self.running:
+            ir = self.ram[self.pc] # instruction register/command
 
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
-            try:
-                operation_op = self.commands[ir](operand_a, operand_b)
-                running = operation_op[1]
-                self.pc += operation_op[0]
+            self.commands[ir](operand_a, operand_b)
 
-                if (running is False):
-                    sys.exit(1)
-
-            except:
-                print(f"Error: Instruction {ir} not found!")
-                sys.exit(1)
 
 
     
