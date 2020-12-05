@@ -14,7 +14,8 @@ class CPU:
         self.commands = {
             0b00000001: self.hlt, # HLT: halt the CPU and exit the emulator
             0b10000010: self.ldi, # LDI: load "immediate", store a value in a register, or "set this register to this value"
-            0b01000111: self.prn # PRN: a pseudo-instruction that prints the numeric value stored in a register
+            0b01000111: self.prn, # PRN: a pseudo-instruction that prints the numeric value stored in a register
+            0b10100010: self.mul, # MUL: multiplyt the values in 2 registers together
         }
 
     # Inside the CPU, there are two internal registers used for memory operations: the Memory Address Register (MAR) and the Memory Data Register (MDR). 
@@ -50,7 +51,11 @@ class CPU:
         print(self.reg[op_a])
         self.pc += 2
         self.running = True
-
+    
+    def mul(self, op_a, op_b):
+        self.reg[op_a] = self.reg[op_a] * self.reg[op_b]
+        self.pc += 3
+        self.running = True
 
     def load(self):
         """Load a program into memory."""
