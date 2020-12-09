@@ -16,6 +16,8 @@ class CPU:
             0b10000010: self.ldi, # LDI: load "immediate", store a value in a register, or "set this register to this value"
             0b01000111: self.prn, # PRN: a pseudo-instruction that prints the numeric value stored in a register
             0b10100010: self.mul, # MUL: multiplyt the values in 2 registers together
+            0b01000101: self.push, # PUSH the value in the given register on the stack
+            0b01000110: self.pop # POP the value at the top of the stack into the given register
         }
 
     # Inside the CPU, there are two internal registers used for memory operations: the Memory Address Register (MAR) and the Memory Data Register (MDR). 
@@ -32,30 +34,62 @@ class CPU:
         self.ram[mar] = mdr
     
     # halt the CPU and exit the emulator
-    def hlt(self, op_a, op_b):
+    def hlt(self):
         self.running = False
         sys.exit()
         
         
     # LDI register immediate
     # Set the value of a register to an integer
-    def ldi(self, op_a, op_b):
-        self.reg[op_a] = op_b
+    def ldi(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+
+        self.reg[operand_a] = operand_b
         self.pc += 3
         self.running = True
         
     
     # PRN register pseudo-instruction
     # print the numeric value stored in a register
-    def prn(self, op_a, op_b):
-        print(self.reg[op_a])
+    def prn(self):
+        operand_a = self.ram_read(self.pc + 1)
+
+        print(self.reg[operand_a])
         self.pc += 2
         self.running = True
     
-    def mul(self, op_a, op_b):
-        self.reg[op_a] = self.reg[op_a] * self.reg[op_b]
+    def mul(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+
+        self.reg[operand_a] = self.reg[operand_a] * self.reg[operand_b]
         self.pc += 3
         self.running = True
+    
+    def push(self):
+        operand_a = self.ram_read(self.pc + 1)
+        self.reg[7] -= 1
+
+        register_address = self.ram[operand_a]
+        value = self.reg[register_address]
+
+        sp = self.reg[7]
+        self.ram[sp] = value
+        self.pc += 2
+
+    def pop(self):
+        operand_a = self.ram_read(self.pc + 1)
+        sp = self.reg[7]
+        value = self.ram[sp]
+
+        register_address = self.ram[operand_a]
+        self.reg[register_address] = value
+
+        self.reg[7] += 1
+        self.pc += 2
+
+
 
     def load(self):
         """Load a program into memory."""
@@ -146,7 +180,7 @@ class CPU:
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
 
-            self.commands[ir](operand_a, operand_b)
+            self.commands[ir]()
 
 
 
