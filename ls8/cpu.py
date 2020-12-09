@@ -68,24 +68,33 @@ class CPU:
         self.running = True
     
     def push(self):
-        operand_a = self.ram_read(self.pc + 1)
+        # decrement the SP (stack pointer)
         self.reg[7] -= 1
 
-        register_address = self.ram[operand_a]
+        # copy value from given register into address pointed to by SP
+        register_address = self.ram_read(self.pc + 1)
         value = self.reg[register_address]
 
         sp = self.reg[7]
-        self.ram[sp] = value
+        self.ram_write(sp, value)
         self.pc += 2
 
     def pop(self):
-        operand_a = self.ram_read(self.pc + 1)
-        sp = self.reg[7]
-        value = self.ram[sp]
+        # copy the value from the address pointed to by `SP` to the given register
 
-        register_address = self.ram[operand_a]
+        # get the SP
+        sp = self.reg[7]
+
+        # copy the value from memory at that SP address
+        value = self.ram_read(sp)
+
+        # get the target register address
+        register_address = self.ram_read(self.pc + 1)
+
+        # Put the value in that register
         self.reg[register_address] = value
 
+        # Increment the SP (move it back up)
         self.reg[7] += 1
         self.pc += 2
 
@@ -133,7 +142,7 @@ class CPU:
                         command = int(stripped_split_line, 2)
                         
                         # load command into memory
-                        self.ram[ram_index] = command
+                        self.ram_write(ram_index, command)
                         ram_index += 1
 
         except FileNotFoundError:
@@ -175,7 +184,7 @@ class CPU:
         self.running = True
 
         while self.running:
-            ir = self.ram[self.pc] # instruction register/command
+            ir = self.ram_read(self.pc) # instruction register/command
 
             operand_a = self.ram_read(self.pc + 1)
             operand_b = self.ram_read(self.pc + 2)
