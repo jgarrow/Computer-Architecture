@@ -20,7 +20,8 @@ class CPU:
             0b01000101: self.push, # PUSH the value in the given register on the stack
             0b01000110: self.pop, # POP the value at the top of the stack into the given register
             0b01010000: self.call, # CALL a subroutine (function) at the address stored in the register
-            0b00010001: self.ret # RET
+            0b00010001: self.ret, # RET
+            0b10100000: self.add # ADD the value in 2 registers and store the result in registerA
         }
 
     # Inside the CPU, there are two internal registers used for memory operations: the Memory Address Register (MAR) and the Memory Data Register (MDR). 
@@ -49,7 +50,6 @@ class CPU:
         operand_b = self.ram_read(self.pc + 2)
 
         self.reg[operand_a] = operand_b
-        self.running = True
         
     
     # PRN register pseudo-instruction
@@ -58,15 +58,19 @@ class CPU:
         operand_a = self.ram_read(self.pc + 1)
 
         print(self.reg[operand_a])
-        # self.pc += 2
-        self.running = True
     
     def mul(self):
         operand_a = self.ram_read(self.pc + 1)
         operand_b = self.ram_read(self.pc + 2)
 
         self.reg[operand_a] = self.reg[operand_a] * self.reg[operand_b]
-        self.running = True
+    
+    def add(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+
+        self.reg[operand_a] = self.reg[operand_a] + self.reg[operand_b]
+
     
     def push(self):
         # decrement the SP (stack pointer)
@@ -110,8 +114,6 @@ class CPU:
         sp = self.reg[7]
         self.ram_write(sp, next_command_address)
 
-    
-    
         # The PC is set to the address stored in the given register. We jump to that location in RAM and execute the first instruction in the subroutine. The PC can move forward or backwards from its current location.
         ## find the number of the register to look at 
         register_number_address = self.ram_read(self.pc + 1)
@@ -223,18 +225,24 @@ class CPU:
         while self.running:
             ir = self.ram_read(self.pc) # instruction register/command
 
-            operand_a = self.ram_read(self.pc + 1)
-            operand_b = self.ram_read(self.pc + 2)
-
             self.commands[ir]()
 
+            # https://github.com/LambdaSchool/Computer-Architecture/blob/master/LS8-spec.md#instruction-layout
+            # meanings iof the bits in the first byte of each instruction/command: AABCDDDD
+            ## AA = Number of operands for this opcode, 0-2
+            ## B = 1 if this is an ALU operation
+            ## C = 1 if this instruction sets the PC
+            ## DDDD = instruction identifier
+
+            # right shift 6 bits to just get the 'AA' 
             number_of_operands = ir >> 6
 
-             # bit shift and mask to isolate the 'C' bit
+            # bit shift and mask to isolate the 'C' bit
+            # will only evaluate to true if the 'C' bit is a 1
             sets_pc_directly = ((ir >> 4) & 0b001) == 0b001
     
             if not sets_pc_directly:
-                 self.pc += (1 + number_of_operands)
+                self.pc += (1 + number_of_operands)
 
 
 
