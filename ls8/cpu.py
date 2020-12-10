@@ -9,6 +9,7 @@ class CPU:
         """Construct a new CPU."""
         self.ram = [0] * 256 # 256 bytes of memory
         self.reg = [0] * 8 # 8 registers
+        self.reg[7] = 0xF4 # set the SP (stack pointer)
         self.pc = 0 
         self.running = False
         self.commands = {
@@ -17,7 +18,9 @@ class CPU:
             0b01000111: self.prn, # PRN: a pseudo-instruction that prints the numeric value stored in a register
             0b10100010: self.mul, # MUL: multiplyt the values in 2 registers together
             0b01000101: self.push, # PUSH the value in the given register on the stack
-            0b01000110: self.pop # POP the value at the top of the stack into the given register
+            0b01000110: self.pop, # POP the value at the top of the stack into the given register
+            0b01010000: self.call, # CALL a subroutine (function) at the address stored in the register
+            0b00010001: self.ret # RET
         }
 
     # Inside the CPU, there are two internal registers used for memory operations: the Memory Address Register (MAR) and the Memory Data Register (MDR). 
@@ -46,7 +49,6 @@ class CPU:
         operand_b = self.ram_read(self.pc + 2)
 
         self.reg[operand_a] = operand_b
-        self.pc += 3
         self.running = True
         
     
@@ -56,7 +58,7 @@ class CPU:
         operand_a = self.ram_read(self.pc + 1)
 
         print(self.reg[operand_a])
-        self.pc += 2
+        # self.pc += 2
         self.running = True
     
     def mul(self):
@@ -64,7 +66,6 @@ class CPU:
         operand_b = self.ram_read(self.pc + 2)
 
         self.reg[operand_a] = self.reg[operand_a] * self.reg[operand_b]
-        self.pc += 3
         self.running = True
     
     def push(self):
@@ -77,7 +78,6 @@ class CPU:
 
         sp = self.reg[7]
         self.ram_write(sp, value)
-        self.pc += 2
 
     def pop(self):
         # copy the value from the address pointed to by `SP` to the given register
@@ -96,8 +96,45 @@ class CPU:
 
         # Increment the SP (move it back up)
         self.reg[7] += 1
-        self.pc += 2
 
+    def call(self):
+        # The address of the instruction directly after CALL is pushed onto the stack. This allows us to return to where we left off when the subroutine finishes executing.
+        ## find the address of the command after CALL (self.pc + 2)
+        next_command_address = self.pc + 2
+
+        ## push the address onto the stack
+            ### decrement SP
+        self.reg[7] -= 1
+
+        ### put next command address at the location in memory where the SP points
+        sp = self.reg[7]
+        self.ram_write(sp, next_command_address)
+
+    
+    
+        # The PC is set to the address stored in the given register. We jump to that location in RAM and execute the first instruction in the subroutine. The PC can move forward or backwards from its current location.
+        ## find the number of the register to look at 
+        register_number_address = self.ram_read(self.pc + 1)
+
+        ## get the address of our subroutine out of that register
+        address_to_jump_to = self.reg[register_number_address]
+
+        ## set the pc
+        self.pc = address_to_jump_to
+
+    def ret(self):
+        # pop the value from the top of the stack and store it in the pc
+
+        ## pop from top of stack
+        ### get the value first -- this is our return address that we want our pc to go back to
+        sp = self.reg[7]
+        return_address = self.ram_read(sp)
+
+        ### then move the SP back up
+        self.reg[7] += 1
+
+        ## Jump back, set pc to this return address value
+        self.pc = return_address
 
 
     def load(self):
@@ -190,6 +227,14 @@ class CPU:
             operand_b = self.ram_read(self.pc + 2)
 
             self.commands[ir]()
+
+            number_of_operands = ir >> 6
+
+             # bit shift and mask to isolate the 'C' bit
+            sets_pc_directly = ((ir >> 4) & 0b001) == 0b001
+    
+            if not sets_pc_directly:
+                 self.pc += (1 + number_of_operands)
 
 
 
